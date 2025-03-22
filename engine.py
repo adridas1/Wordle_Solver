@@ -11,7 +11,7 @@ class Engine:
         
         # Finds the word with the highest entropy among the remaining possible words based on the score_guess method.
         words_scores = lambda word: self.score_guess(word, words_left) 
-        print(f"Length of words left list: {len(words_left)}")
+        #print(f"Length of words left list: {len(words_left)}")
         best_guess = max(words_left, key=words_scores)
         return best_guess
     
@@ -29,27 +29,13 @@ class Engine:
             if self.does_word_match(word, guess, feedback):
                 new_words_left_list.append(word)
 
-        print(f"Filtered words from {len(words_left)} to {len(new_words_left_list)} based on feedback {feedback}")
+        #print(f"Filtered words from {len(words_left)} to {len(new_words_left_list)} based on feedback {feedback}")
         return new_words_left_list
     
-    
     def does_word_match(self, word, guess, feedback):
-        word_freq = {char: word.count(char) for char in set(word)}
-        for i in range(len(feedback)):
-            if feedback[i] == "✓":
-                if word[i] != guess[i]:
-                    return False
-                word_freq[guess[i]] -= 1
-            elif feedback[i] == "~":
-                if guess[i] not in word or word[i] == guess[i] or word_freq[guess[i]] == 0:
-                    return False
-                word_freq[guess[i]] -= 1
-            elif feedback[i] == "X":
-                if guess[i] in word and word_freq[guess[i]] > 0:
-                    return False
-
-        return True
-
+        """Checks if a word would produce the same feedback when guessed."""
+        simulated = self.simulate_feedback(word, guess)
+        return simulated == ''.join(feedback)
 
     def score_guess(self, potential_guess, words_left):
         """Calculates the entropy of a word based on the remaining possible words."""
@@ -70,12 +56,24 @@ class Engine:
         return entropy
     
     def simulate_feedback(self, word, potential_guess):
-        feedback = []
+        """Simulates feedback like Wordle, with correct handling of duplicate letters."""
+        feedback = ['X'] * len(potential_guess)
+        secret_counts = {}
+
+        # First pass: mark correct letters
         for i in range(len(potential_guess)):
             if potential_guess[i] == word[i]:
-                feedback.append("✓")
-            elif potential_guess[i] in word:
-                feedback.append("~")
+                feedback[i] = '✓'
             else:
-                feedback.append("X")
-        return "".join(feedback)
+                if word[i] in secret_counts:
+                    secret_counts[word[i]] += 1
+                else:
+                    secret_counts[word[i]] = 1
+
+        # Second pass: mark misplaced letters
+        for i in range(len(potential_guess)):
+            if feedback[i] == 'X' and potential_guess[i] in secret_counts and secret_counts[potential_guess[i]] > 0:
+                feedback[i] = '~'
+                secret_counts[potential_guess[i]] -= 1
+
+        return ''.join(feedback)
